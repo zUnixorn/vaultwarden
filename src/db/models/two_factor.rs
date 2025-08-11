@@ -3,7 +3,7 @@ use crate::api::core::two_factor::webauthn::WebauthnRegistration;
 use crate::{api::EmptyResult, db::DbConn, error::MapResult};
 use serde_json::Value;
 use webauthn_rs::prelude::{Credential, ParsedAttestation};
-use webauthn_rs_core::proto::CredentialV3;
+use webauthn_rs_core::proto::{AttestationMetadata, CredentialV3, ParsedAttestationData};
 use webauthn_rs_proto::{AttestationFormat, RegisteredExtensions};
 
 db_object! {
@@ -270,11 +270,34 @@ pub struct WebauthnRegistrationV3 {
 
 impl From<WebauthnRegistrationV3> for WebauthnRegistration {
     fn from(value: WebauthnRegistrationV3) -> Self {
+        let CredentialV3 {
+            cred_id,
+            cred,
+            counter,
+            verified,
+            registration_policy,
+        } = value.credential;
+
         Self {
             id: value.id,
             name: value.name,
             migrated: value.migrated,
-            credential: Credential::from(value.credential).into(),
+            credential: Credential {
+                cred_id: cred_id.into(),
+                cred,
+                counter,
+                transports: None,
+                user_verified: verified,
+                backup_eligible: true,
+                backup_state: false,
+                registration_policy,
+                extensions: RegisteredExtensions::none(),
+                attestation: ParsedAttestation {
+                    data: ParsedAttestationData::None,
+                    metadata: AttestationMetadata::None,
+                },
+                attestation_format: AttestationFormat::None,
+            }.into(),
         }
     }
 }
